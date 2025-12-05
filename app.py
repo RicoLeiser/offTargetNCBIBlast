@@ -35,9 +35,13 @@ def blast_short(seq: str) -> str:
     return NCBIWWW.qblast("blastn", "nt", seq, format_type="XML").read()
 
 def extract_species_from_xml(xml_data) -> list:
-    """Parse BLAST XML and extract species with 100% identity and coverage"""
+    """
+    Parse BLAST XML and extract species with 100% identity and coverage.
+    Handles cases where the title contains 'PREDICTED:'.
+    """
     hits = []
     blast_record = NCBIXML.read(xml_data)
+    
     for alignment in blast_record.alignments:
         for hsp in alignment.hsps:
             query_cov = (hsp.align_length / blast_record.query_length) * 100
@@ -45,11 +49,19 @@ def extract_species_from_xml(xml_data) -> list:
             if identity == 100.0 and query_cov == 100.0:
                 title = alignment.title
                 parts = title.split()
-                if len(parts) >= 2:
-                    species = f"{parts[1]} {parts[2]}"
-                    hits.append(species)
+                
+                # Look for 'PREDICTED:' in the title
+                if "PREDICTED:" in parts:
+                    idx = parts.index("PREDICTED:")
+                    if len(parts) > idx + 2:
+                        species = f"{parts[idx+1]} {parts[idx+2]}"
+                        hits.append(species)
+                else:
+                    # Fallback: take the first two words after the accession (usually parts[1] and parts[2])
+                    if len(parts) >= 3:
+                        species = f"{parts[1]} {parts[2]}"
+                        hits.append(species)
     return hits
-
 # ------------------- Main Pipeline -------------------
 if uploaded_file is not None:
     st.info("Reading uploaded FASTA...")
