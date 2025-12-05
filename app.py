@@ -78,18 +78,22 @@ if uploaded_file is not None:
     species_counts = {}
 
     for idx, kmer in enumerate(kmers):
-        status_text.text(f"BLASTing kmer {idx+1}/{len(kmers)}")
-        try:
-            xml_string = blast_short(kmer)
-            xml_data = StringIO(xml_string)
-            hits = extract_species_from_xml(xml_data)
-            for sp in hits:
-                species_counts[sp] = species_counts.get(sp, 0) + 1
-        except Exception as e:
-            st.warning(f"Error BLASTing kmer {idx+1}: {e}")
-        time.sleep(DELAY)  # respect NCBI
-
-        progress_bar.progress((idx + 1) / len(kmers))
+    status_text.text(f"BLASTing kmer {idx+1}/{len(kmers)}")
+    try:
+        xml_string = blast_short(kmer)
+        xml_data = StringIO(xml_string)
+        hits = extract_species_from_xml(xml_data)
+        
+        # Count each species only once per kmer
+        unique_hits = set(hits)
+        for sp in unique_hits:
+            species_counts[sp] = species_counts.get(sp, 0) + 1
+            
+    except Exception as e:
+        st.warning(f"Error BLASTing kmer {idx+1}: {e}")
+    
+    time.sleep(DELAY)
+    progress_bar.progress((idx + 1) / len(kmers))
 
     st.success("BLAST complete!")
 
